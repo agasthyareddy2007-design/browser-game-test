@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>METROPOLIS: VICE DISTRICT - 3D Open World</title>
+  <link rel="stylesheet" href="/styles/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=Montserrat:wght@400;700;900&family=Pricedown&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Crosshair / Reticle -->
+    <div id="crosshair" class="crosshair">
+      <div class="cross-dot"></div>
+      <div class="cross-line left"></div>
+      <div class="cross-line right"></div>
+      <div class="cross-line top"></div>
+      <div class="cross-line bottom"></div>
+    </div>
+
+    <!-- HUD Overlay -->
+    <div id="hud">
+      <!-- Top Right: Stats, Cash, Weapon, Stars -->
+      <div id="hud-top-right">
+        <div id="wanted-stars">
+          <span class="star" data-index="0">★</span>
+          <span class="star" data-index="1">★</span>
+          <span class="star" data-index="2">★</span>
+          <span class="star" data-index="3">★</span>
+          <span class="star" data-index="4">★</span>
+        </div>
+        <div id="cash-display">$00002500</div>
+        <div id="weapon-display">
+          <div id="weapon-icon">👊</div>
+          <div id="ammo-display">
+            <span id="ammo-clip">--</span> / <span id="ammo-reserve">--</span>
+          </div>
+          <div id="weapon-name">FISTS</div>
+        </div>
+        <div id="time-display">12:00 PM</div>
+      </div>
+
+      <!-- Top Left: Mission Objective & Multiplayer Room Info -->
+      <div id="hud-top-left">
+        <div id="mp-room-badge" class="mp-room-badge hidden">
+          <span class="mp-status-dot"></span>
+          <span id="mp-room-code-display">ROOM: VICE</span>
+          <span class="mp-divider">|</span>
+          <span id="mp-player-count">1 ONLINE</span>
+        </div>
+        <div id="mission-card" class="hidden">
+          <div class="mission-tag">ACTIVE OBJECTIVE</div>
+          <div id="mission-title">THE GETAWAY</div>
+          <div id="mission-desc">Steal the prototype Banshee GT from Downtown garage</div>
+          <div id="mission-tracker">Distance: <span id="mission-dist">250m</span></div>
+        </div>
+        <div id="district-banner">DOWNTOWN METROPOLIS</div>
+      </div>
+
+      <!-- Bottom Left: Radar / Minimap & Health/Armor -->
+      <div id="hud-bottom-left">
+        <div class="radar-wrapper">
+          <canvas id="radar-canvas" width="180" height="180"></canvas>
+          <div class="radar-compass-n">N</div>
+        </div>
+        <div class="bars-container">
+          <div class="bar-wrapper health-bar-wrapper">
+            <div class="bar-label">HEALTH</div>
+            <div class="bar-track">
+              <div id="health-bar" class="bar-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+          <div class="bar-wrapper armor-bar-wrapper">
+            <div class="bar-label">ARMOR</div>
+            <div class="bar-track">
+              <div id="armor-bar" class="bar-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+          <div class="bar-wrapper stamina-bar-wrapper">
+            <div class="bar-label">STAMINA</div>
+            <div class="bar-track">
+              <div id="stamina-bar" class="bar-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Right: Vehicle Dashboard -->
+      <div id="hud-bottom-right" class="hidden">
+        <div class="vehicle-info-card">
+          <div id="vehicle-name">BANSHEE GT</div>
+          <div class="speedometer">
+            <span id="speed-value">0</span>
+            <span class="speed-unit">MPH</span>
+          </div>
+          <div class="vehicle-gauges">
+            <div class="gauge-label">NITRO</div>
+            <div class="gauge-track">
+              <div id="nitro-bar" class="gauge-fill" style="width: 100%;"></div>
+            </div>
+            <div class="gauge-label">DAMAGE</div>
+            <div class="gauge-track">
+              <div id="car-damage-bar" class="gauge-fill damage-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+          <div id="radio-station">📻 VICE SYNTHWAVE FM</div>
+        </div>
+      </div>
+
+      <!-- Center Action Prompts -->
+      <div id="action-prompt" class="action-prompt hidden">
+        <span class="key-badge">F</span> <span id="prompt-text">ENTER VEHICLE</span>
+      </div>
+
+      <!-- Multiplayer Kill Feed & Chat -->
+      <div id="mp-killfeed" class="mp-killfeed"></div>
+      <div id="mp-notification" class="mp-notification hidden"></div>
+
+      <div id="mp-chat-container" class="mp-chat-container">
+        <div id="mp-chat-messages" class="mp-chat-messages"></div>
+        <div id="mp-chat-input-row" class="mp-chat-input-row hidden">
+          <input type="text" id="mp-chat-input" placeholder="Type chat message (Enter to send, Esc to cancel)..." maxlength="120" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Center Banners: Wasted / Busted / Mission Passed -->
+      <div id="banner-wasted" class="center-banner hidden">
+        <div class="banner-title wasted-title">WASTED</div>
+        <div class="banner-subtitle">Respawning at Metropolis General Hospital...</div>
+      </div>
+
+      <div id="banner-busted" class="center-banner hidden">
+        <div class="banner-title busted-title">BUSTED</div>
+        <div class="banner-subtitle">Bailed out at 1st Precinct Police Station...</div>
+      </div>
+
+      <div id="banner-passed" class="center-banner hidden">
+        <div class="banner-title passed-title">MISSION PASSED!</div>
+        <div id="passed-mission-name" class="banner-subtitle">THE GRAND THEFT AUTO</div>
+        <div id="passed-reward" class="banner-reward">+$10,000</div>
+      </div>
+
+      <!-- Controls Overlay Footer -->
+      <div id="controls-hint">
+        <span><b>WASD</b> Move/Drive</span>
+        <span><b>MOUSE</b> Look/Aim</span>
+        <span><b>LMB</b> Attack/Shoot</span>
+        <span><b>RMB</b> Aim</span>
+        <span><b>F</b> Enter/Exit</span>
+        <span><b>SPACE</b> Jump/Handbrake</span>
+        <span><b>SHIFT</b> Sprint/Nitro</span>
+        <span><b>1-5 / WHEEL</b> Weapons</span>
+        <span><b>H</b> Horn/Siren</span>
+        <span><b>R</b> Radio</span>
+        <span><b>M</b> Map</span>
+        <span><b>C</b> Look Back</span>
+        <span><b>T</b> Chat</span>
+        <span><b>ESC</b> Cheats/Menu</span>
+      </div>
+    </div>
+
+    <!-- Pause / Cheats / Menu Modal -->
+    <div id="pause-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>METROPOLIS: VICE DISTRICT</h2>
+          <p>PAUSE MENU & CHEATS CONSOLE</p>
+        </div>
+
+        <div class="modal-tabs">
+          <button class="tab-btn active" data-tab="cheats">CHEAT CODES</button>
+          <button class="tab-btn" data-tab="multiplayer">MULTIPLAYER</button>
+          <button class="tab-btn" data-tab="missions">MISSIONS</button>
+          <button class="tab-btn" data-tab="radio">RADIO STATIONS</button>
+          <button class="tab-btn" data-tab="settings">SETTINGS</button>
+          <button class="tab-btn" data-tab="controls">CONTROLS</button>
+        </div>
+
+        <div class="tab-content" id="tab-cheats">
+          <div class="cheats-grid">
+            <button class="cheat-btn" data-cheat="guns">🔫 ALL WEAPONS + MAX AMMO</button>
+            <button class="cheat-btn" data-cheat="health">❤️ FULL HEALTH & BODY ARMOR</button>
+            <button class="cheat-btn" data-cheat="cash">💰 +$50,000 CASH</button>
+            <button class="cheat-btn" data-cheat="supercar">🏎️ SPAWN SUPERCAR (BANSHEE GT)</button>
+            <button class="cheat-btn" data-cheat="muscle">🚗 SPAWN MUSCLE CAR (DOMINATOR)</button>
+            <button class="cheat-btn" data-cheat="police">🚓 SPAWN POLICE CRUISER</button>
+            <button class="cheat-btn" data-cheat="tank">💥 SPAWN RHINO TANK</button>
+            <button class="cheat-btn" data-cheat="heli">🚁 SPAWN ATTACK HELICOPTER</button>
+            <button class="cheat-btn" data-cheat="clearheat">⭐ CLEAR ALL WANTED STARS</button>
+            <button class="cheat-btn" data-cheat="maxheat">⭐⭐⭐⭐⭐ 5-STAR MAX HEAT!</button>
+            <button class="cheat-btn" data-cheat="daynight">☀️ TOGGLE DAY / NIGHT</button>
+            <button class="cheat-btn" data-cheat="repairs">🔧 REPAIR CURRENT VEHICLE</button>
+          </div>
+          <div class="cheat-input-row">
+            <input type="text" id="cheat-text-input" placeholder="Type secret cheat code (e.g. GUNS, TANK, CASH)..." autocomplete="off">
+            <button id="cheat-submit-btn">ACTIVATE</button>
+          </div>
+          <div id="cheat-status-msg"></div>
+        </div>
+
+        <div class="tab-content hidden" id="tab-multiplayer">
+          <div class="mp-pause-panel">
+            <div class="mp-panel-header">
+              <span id="mp-pause-status">STATUS: CONNECTED</span>
+              <span id="mp-pause-room-code">ROOM: VICE</span>
+            </div>
+            <div class="mp-players-card">
+              <h4>PLAYERS IN SESSION</h4>
+              <div id="mp-players-list" class="mp-players-list"></div>
+            </div>
+            <div class="mp-session-actions">
+              <button id="mp-disconnect-btn" class="mp-danger-btn">LEAVE MULTIPLAYER</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content hidden" id="tab-missions">
+          <div id="missions-list"></div>
+        </div>
+
+        <div class="tab-content hidden" id="tab-radio">
+          <div class="radio-list">
+            <div class="radio-item" data-station="0">
+              <div class="station-icon">⚡</div>
+              <div class="station-details">
+                <div class="station-name">VICE SYNTHWAVE FM</div>
+                <div class="station-genre">80s Retro Electro & Outrun Melodies</div>
+              </div>
+            </div>
+            <div class="radio-item" data-station="1">
+              <div class="station-icon">🔥</div>
+              <div class="station-details">
+                <div class="station-name">METRO DRIFT PHONK</div>
+                <div class="station-genre">Dark Basslines, Trap Hi-Hats & 808s</div>
+              </div>
+            </div>
+            <div class="radio-item" data-station="2">
+              <div class="station-icon">🌴</div>
+              <div class="station-details">
+                <div class="station-name">OCEAN DRIVE LO-FI</div>
+                <div class="station-genre">Smooth Rhodes Chords & Relaxed Grooves</div>
+              </div>
+            </div>
+            <div class="radio-item" data-station="3">
+              <div class="station-icon">🔇</div>
+              <div class="station-details">
+                <div class="station-name">RADIO OFF</div>
+                <div class="station-genre">Listen to the City Ambience & Engine Roar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content hidden" id="tab-settings">
+          <div class="settings-group">
+            <label>Invert Mouse Look (Y-Axis)</label>
+            <input type="checkbox" id="setting-invert-y">
+          </div>
+          <div class="settings-group">
+            <label>Mouse Sensitivity</label>
+            <input type="range" id="setting-sensitivity" min="10" max="100" value="50">
+          </div>
+          <div class="settings-group">
+            <label>Master Audio Volume</label>
+            <input type="range" id="setting-volume" min="0" max="100" value="80">
+          </div>
+          <div class="settings-group">
+            <label>Radio Music Volume</label>
+            <input type="range" id="setting-music" min="0" max="100" value="70">
+          </div>
+          <div class="settings-group">
+            <label>SFX / Engine Volume</label>
+            <input type="range" id="setting-sfx" min="0" max="100" value="85">
+          </div>
+          <div class="settings-group">
+            <label>Shadow Quality</label>
+            <select id="setting-shadows">
+              <option value="high">High (Soft Shadows)</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low (Fastest)</option>
+            </select>
+          </div>
+          <div class="settings-group">
+            <label>Post-Processing Bloom & Neon</label>
+            <input type="checkbox" id="setting-bloom" checked>
+          </div>
+        </div>
+
+        <div class="tab-content hidden" id="tab-controls">
+          <div class="controls-table">
+            <div class="ctrl-row"><span class="k">W, A, S, D</span><span>Walk / Steer Vehicle / Fly Helicopter</span></div>
+            <div class="ctrl-row"><span class="k">Mouse</span><span>Look Around / Aim Camera / Helicopter Pitch</span></div>
+            <div class="ctrl-row"><span class="k">Left Click</span><span>Punch Melee / Shoot Weapon / Vehicle Guns</span></div>
+            <div class="ctrl-row"><span class="k">Right Click</span><span>Aim Down Sights (Zoom)</span></div>
+            <div class="ctrl-row"><span class="k">F or Enter</span><span>Enter or Exit Vehicle / Helicopter</span></div>
+            <div class="ctrl-row"><span class="k">Spacebar</span><span>Jump (Foot) / Handbrake Drift (Car) / Ascend (Heli)</span></div>
+            <div class="ctrl-row"><span class="k">Left Shift</span><span>Sprint (Foot) / Nitro Boost (Car) / Descend (Heli)</span></div>
+            <div class="ctrl-row"><span class="k">1, 2, 3, 4, 5</span><span>Select Weapon (Fist, Pistol, SMG, Shotgun, RPG)</span></div>
+            <div class="ctrl-row"><span class="k">Mouse Wheel</span><span>Cycle Next / Previous Weapon</span></div>
+            <div class="ctrl-row"><span class="k">H</span><span>Honk Horn (Car) / Police Siren Strobe</span></div>
+            <div class="ctrl-row"><span class="k">L</span><span>Toggle Car Headlights (Low / High Beam)</span></div>
+            <div class="ctrl-row"><span class="k">R</span><span>Cycle Radio Station</span></div>
+            <div class="ctrl-row"><span class="k">C</span><span>Look Back / Rearview Camera</span></div>
+            <div class="ctrl-row"><span class="k">M</span><span>Toggle Fullscreen Metropolis GPS Map</span></div>
+            <div class="ctrl-row"><span class="k">ESC or P</span><span>Pause Menu / Cheat Codes Console</span></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="resume-btn" class="primary-btn">RESUME GAME</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fullscreen City Map Modal -->
+    <div id="fullmap-modal" class="modal hidden">
+      <div class="fullmap-container">
+        <div class="fullmap-header">
+          <h3>METROPOLIS CITY GPS MAP</h3>
+          <button id="close-map-btn">CLOSE [M / ESC]</button>
+        </div>
+        <div class="fullmap-canvas-wrapper">
+          <canvas id="fullmap-canvas" width="800" height="800"></canvas>
+        </div>
+        <div class="fullmap-legend">
+          <span><span class="legend-dot player"></span> You</span>
+          <span><span class="legend-dot mission"></span> Mission Objective</span>
+          <span><span class="legend-dot spray"></span> Pay'n'Spray (Garage)</span>
+          <span><span class="legend-dot gun"></span> Ammu-Nation</span>
+          <span><span class="legend-dot cop"></span> Police Precinct</span>
+          <span><span class="legend-dot hospital"></span> Hospital</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start / Click to Play Screen -->
+    <div id="start-screen">
+      <div class="start-box">
+        <h1 class="logo-title">METROPOLIS</h1>
+        <h2 class="logo-subtitle">VICE DISTRICT</h2>
+        <div class="logo-divider"></div>
+        <p class="tagline">AN OPEN-WORLD 3D ACTION CRIME SIMULATOR</p>
+        <div class="features-summary">
+          <span>🚗 Drivable Supercars, Cruisers & Tanks</span>
+          <span>🔫 Explosive Weapon Arsenal</span>
+          <span>⭐ 5-Star Wanted Police Heat</span>
+          <span>🎯 Story Missions & Heists</span>
+          <span>📻 Procedural Synthwave Radio</span>
+        </div>
+
+        <!-- Multiplayer LAN / Online Setup -->
+        <div class="mp-lobby-card">
+          <div class="mp-lobby-header">🌐 MULTIPLAYER SESSION (LAN / SAME NETWORK)</div>
+          
+          <div class="mp-inputs-row">
+            <div class="mp-field">
+              <label for="mp-username-input">YOUR USERNAME</label>
+              <input type="text" id="mp-username-input" maxlength="16" placeholder="Enter username (e.g. Tommy, Sai)..." autocomplete="off" />
+            </div>
+            <div class="mp-field">
+              <label for="mp-room-input">ROOM CODE</label>
+              <input type="text" id="mp-room-input" maxlength="8" placeholder="e.g. VICE, 7788..." value="VICE" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="mp-buttons-row">
+            <button id="mp-host-btn" class="mp-action-btn host-btn">⚡ HOST / CREATE ROOM</button>
+            <button id="mp-join-btn" class="mp-action-btn join-btn">🔗 JOIN ROOM CODE</button>
+          </div>
+          <p class="mp-hint">Players on the same Wi-Fi / LAN network can enter this room code to battle and drive together!</p>
+        </div>
+
+        <button id="start-btn" class="start-play-btn solo-btn">👤 PLAY SOLO (OFFLINE)</button>
+        <p class="click-instructions">Click to play. WASD to move/drive, Mouse to look/aim, LMB to shoot, T to chat, ESC for cheats.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
